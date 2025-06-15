@@ -152,16 +152,16 @@ class ModelLoader:
             if prediction < 0:
                 prediction = abs(prediction)
             
-            # 使用された特徴量（デバッグ用）
+            # 使用された特徴量（デバッグ用、area_ratioを除外）
             features_used = {}
             feature_columns = self.feature_info['feature_columns']
             for i, col in enumerate(feature_columns):
-                if features[0][i] != 0:
+                if features[0][i] != 0 and col != 'area_ratio':
                     features_used[col] = float(features[0][i])
             
             result = {
-                'predicted_price': round(prediction, 1),
-                'confidence': self._calculate_confidence(features),
+                'predicted_price': round(prediction, 0),
+                'confidence': self._calculate_confidence(features) * 100,
                 'features_used': features_used
             }
             

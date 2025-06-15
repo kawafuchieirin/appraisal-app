@@ -1,0 +1,124 @@
+{% extends 'valuation/base.html' %}
+
+{% block content %}
+<h2>物件情報を入力してください</h2>
+
+<form method="post" action="{% url 'result' %}">
+    {% csrf_token %}
+    
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label for="{{ form.building_area.id_for_label }}" class="form-label">
+                {{ form.building_area.label }}
+            </label>
+            {{ form.building_area }}
+            <div class="form-text">{{ form.building_area.help_text }}</div>
+            {% if form.building_area.errors %}
+                <div class="text-danger">
+                    {% for error in form.building_area.errors %}
+                        <small>{{ error }}</small>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="col-md-6 mb-3">
+            <label for="{{ form.land_area.id_for_label }}" class="form-label">
+                {{ form.land_area.label }}
+            </label>
+            {{ form.land_area }}
+            <div class="form-text">{{ form.land_area.help_text }}</div>
+            {% if form.land_area.errors %}
+                <div class="text-danger">
+                    {% for error in form.land_area.errors %}
+                        <small>{{ error }}</small>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label for="{{ form.building_age.id_for_label }}" class="form-label">
+                {{ form.building_age.label }}
+            </label>
+            {{ form.building_age }}
+            <div class="form-text">{{ form.building_age.help_text }}</div>
+            {% if form.building_age.errors %}
+                <div class="text-danger">
+                    {% for error in form.building_age.errors %}
+                        <small>{{ error }}</small>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="col-md-6 mb-3">
+            <label for="{{ form.ward_name.id_for_label }}" class="form-label">
+                {{ form.ward_name.label }}
+            </label>
+            {{ form.ward_name }}
+            {% if form.ward_name.errors %}
+                <div class="text-danger">
+                    {% for error in form.ward_name.errors %}
+                        <small>{{ error }}</small>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label for="{{ form.year.id_for_label }}" class="form-label">
+                {{ form.year.label }}
+            </label>
+            {{ form.year }}
+            {% if form.year.errors %}
+                <div class="text-danger">
+                    {% for error in form.year.errors %}
+                        <small>{{ error }}</small>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="col-md-6 mb-3">
+            <label class="form-label">{{ form.quarter.label }}</label>
+            <div class="mt-2">
+                {% for choice in form.quarter %}
+                    <div class="form-check">
+                        {{ choice.tag }}
+                        <label class="form-check-label" for="{{ choice.id_for_label }}">
+                            {{ choice.choice_label }}
+                        </label>
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="form-text">季節による市場動向を考慮した査定を行います</div>
+            {% if form.quarter.errors %}
+                <div class="text-danger">
+                    {% for error in form.quarter.errors %}
+                        <small>{{ error }}</small>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="text-center">
+        <button type="submit" class="btn btn-primary btn-lg">🔍 査定を開始</button>
+    </div>
+</form>
+
+<div class="mt-4">
+    <h5>査定について</h5>
+    <ul class="text-muted">
+        <li>本査定は機械学習モデルによる推定価格です</li>
+        <li>実際の取引価格とは異なる場合があります</li>
+        <li>東京23区内の物件に対応しています</li>
+        <li>🌸春は転居需要増で価格上昇傾向、❄️冬は需要減で価格下落傾向</li>
+    </ul>
+</div>
+{% endblock %}
