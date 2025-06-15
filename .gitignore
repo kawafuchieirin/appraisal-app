@@ -1,0 +1,33 @@
+# Model Training Data and Artifacts
+model_create/data/
+model_create/models/
+*.joblib
+*.pkl
+*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# API Keys
+*api_key*
+*API_KEY*
+*.key
+
+# Temporary files
+*.tmp
