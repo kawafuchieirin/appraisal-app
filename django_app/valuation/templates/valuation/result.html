@@ -1,0 +1,76 @@
+{% extends 'valuation/base.html' %}
+
+{% block content %}
+<h2>査定結果</h2>
+
+{% if result %}
+    <div class="result-card card mb-4">
+        <div class="card-body text-center">
+            <h3 class="mb-3">🏠 推定価格</h3>
+            <div class="price-display">{{ result.predicted_price|floatformat:0 }} 万円</div>
+            <p class="text-muted mt-2">信頼度: {{ result.confidence|floatformat:1 }}%</p>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5>📊 入力情報</h5>
+                </div>
+                <div class="card-body">
+                    <div class="detail-item">
+                        <strong>建物面積:</strong> {{ input_data.building_area }} ㎡
+                    </div>
+                    <div class="detail-item">
+                        <strong>土地面積:</strong> {{ input_data.land_area }} ㎡
+                    </div>
+                    <div class="detail-item">
+                        <strong>築年数:</strong> {{ input_data.building_age }} 年
+                    </div>
+                    <div class="detail-item">
+                        <strong>所在区:</strong> {{ input_data.ward_name }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>📝 査定詳細</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>価格算出要素:</strong></p>
+                <ul>
+                    <li>建物面積・土地面積による基本価値</li>
+                    <li>築年数による減価要素</li>
+                    <li>所在区による地域価値</li>
+                    <li>査定時期による市場動向</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+{% else %}
+    <div class="alert alert-warning" role="alert">
+        <h5>査定結果を表示できませんでした</h5>
+        <p>エラーが発生したか、不正なアクセスです。</p>
+    </div>
+{% endif %}
+
+<div class="text-center mt-4">
+    <a href="{% url 'index' %}" class="btn btn-secondary btn-lg">🔄 新しい査定を開始</a>
+</div>
+
+<div class="mt-4 text-muted">
+    <h6>⚠️ 重要事項</h6>
+    <ul class="small">
+        <li>本査定結果は機械学習による推定値です</li>
+        <li>実際の市場価格や取引価格とは異なる場合があります</li>
+        <li>正確な査定には不動産会社による現地調査が必要です</li>
+        <li>投資や取引の判断材料としてご利用の際は十分ご注意ください</li>
+    </ul>
+</div>
+{% endblock %}
