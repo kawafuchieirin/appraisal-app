@@ -3,7 +3,55 @@
 {% block content %}
 <h2>査定結果</h2>
 
-{% if result %}
+{% if error %}
+    <!-- 🚨 エラー表示セクション -->
+    <div class="alert alert-warning" role="alert">
+        <div class="d-flex align-items-center mb-3">
+            {% if error_type == 'api_disabled' %}
+                <i class="fas fa-tools me-2" style="font-size: 1.5rem;"></i>
+                <h5 class="mb-0">🔧 メンテナンス中</h5>
+            {% elif error_type == 'connection_error' %}
+                <i class="fas fa-wifi me-2" style="font-size: 1.5rem;"></i>
+                <h5 class="mb-0">🌐 接続エラー</h5>
+            {% elif error_type == 'timeout' %}
+                <i class="fas fa-clock me-2" style="font-size: 1.5rem;"></i>
+                <h5 class="mb-0">⏰ タイムアウト</h5>
+            {% else %}
+                <i class="fas fa-exclamation-triangle me-2" style="font-size: 1.5rem;"></i>
+                <h5 class="mb-0">⚠️ エラー</h5>
+            {% endif %}
+        </div>
+        <p class="mb-0">{{ error }}</p>
+    </div>
+
+    <!-- 📊 入力情報表示（エラー時も表示） -->
+    {% if input_data %}
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>📊 入力情報</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="detail-item">
+                            <strong>建物面積:</strong> {{ input_data.building_area }} ㎡
+                        </div>
+                        <div class="detail-item">
+                            <strong>土地面積:</strong> {{ input_data.land_area }} ㎡
+                        </div>
+                        <div class="detail-item">
+                            <strong>築年数:</strong> {{ input_data.building_age }} 年
+                        </div>
+                        <div class="detail-item">
+                            <strong>所在区:</strong> {{ input_data.ward_name }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+{% elif result %}
     <div class="result-card card mb-4">
         <div class="card-body text-center">
             <h3 class="mb-3">🏠 推定価格</h3>

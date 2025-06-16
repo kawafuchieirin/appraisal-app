@@ -14,7 +14,7 @@ class ModelLoader:
     機械学習モデルとスケーラーの読み込み・管理クラス
     """
     
-    def __init__(self, model_dir: str = "../model_create/models"):
+    def __init__(self, model_dir: str = "./models"):
         """
         モデルローダーの初期化
         

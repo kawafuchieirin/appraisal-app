@@ -1,0 +1,12 @@
+# Django and web server
+django>=4.2.0
+gunicorn>=21.2.0
+
+# Environment and configuration
+python-dotenv>=1.0.0
+
+# HTTP requests
+requests>=2.31.0
+
+# WSGI/ASGI support
+whitenoise>=6.5.0
