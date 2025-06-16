@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Unified ECR Push Script for Django + FastAPI Lambda Services
+# Unified ECR Push Script for Django + FastAPI ECS Services
 # Usage: ./push_to_ecr.sh [AWS_REGION] [SERVICE_NAME]
 
 set -e
@@ -60,7 +60,7 @@ build_and_push_service() {
     
     # Build Docker image
     echo -e "${YELLOW}🔨 Building ${service} Docker image for linux/amd64...${NC}"
-    docker build --platform linux/amd64 -f ${service}_app/Dockerfile -t ${repo_name}:latest .
+    docker build --platform linux/amd64 -f ${service}_app/Dockerfile.ecs -t ${repo_name}:latest .
     
     if [ $? -ne 0 ]; then
         echo -e "${RED}❌ Docker build failed for ${service}${NC}"
@@ -112,9 +112,8 @@ esac
 echo -e "${GREEN}🎉 ECR deployment completed successfully!${NC}"
 echo ""
 echo -e "${BLUE}📋 Next Steps:${NC}"
-echo "  1. Deploy Lambda functions:"
-echo "     aws lambda create-function --function-name satei-django --package-type Image --code ImageUri=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/satei-django:latest"
-echo "     aws lambda create-function --function-name satei-fastapi --package-type Image --code ImageUri=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/satei-fastapi:latest"
-echo ""
-echo "  2. Set up API Gateway integration"
-echo "  3. Configure environment variables"
+echo "  1. Update ECS task definitions with new image URIs"
+echo "  2. Deploy ECS services:"
+echo "     aws ecs update-service --cluster satei-app-cluster --service <service-name> --task-definition <task-definition>"
+echo "  3. Configure Application Load Balancer"
+echo "  4. Set up target groups and health checks"

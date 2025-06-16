@@ -1,0 +1,39 @@
+# FastAPI ECS Deployment Dockerfile
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install dependencies
+COPY fastapi_app/requirements.txt .
+RUN pip install --upgrade pip && \
+    pip install numpy==1.24.3 && \
+    pip install -r requirements.txt
+
+# Copy FastAPI application
+COPY fastapi_app/ .
+
+# Copy ML models
+COPY model_create/models/ ./models/
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV ENVIRONMENT=production
+
+# Expose port
+EXPOSE 8000
+
+# Create a non-root user
+RUN useradd --create-home --shell /bin/bash app
+RUN chown -R app:app /app
+USER app
+
+# Default command - FastAPI with uvicorn
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

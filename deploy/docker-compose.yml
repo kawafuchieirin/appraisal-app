@@ -1,0 +1,35 @@
+version: "3"
+
+services:
+  django:
+    image: 412420079063.dkr.ecr.ap-northeast-1.amazonaws.com/satei-django:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=django_app.settings
+      - ENVIRONMENT=production
+      - DEBUG=False
+      - PYTHONUNBUFFERED=1
+      - FASTAPI_URL=http://127.0.0.1:8001
+      - FASTAPI_TIMEOUT=30
+      - USE_MODEL_API=true
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: /ecs/satei-app
+        awslogs-region: ap-northeast-1
+        awslogs-stream-prefix: django
+  fastapi:
+    image: 412420079063.dkr.ecr.ap-northeast-1.amazonaws.com/satei-fastapi:latest
+    ports:
+      - "8001:8000"
+    environment:
+      - ENVIRONMENT=production
+      - PYTHONUNBUFFERED=1
+      - CORS_ORIGINS=*
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: /ecs/satei-app
+        awslogs-region: ap-northeast-1
+        awslogs-stream-prefix: fastapi

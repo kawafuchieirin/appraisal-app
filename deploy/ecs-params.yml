@@ -1,0 +1,27 @@
+version: 1
+task_definition:
+  task_execution_role: ecsTaskExecutionRole
+  task_role_arn: ecsTaskExecutionRole
+  network_mode: awsvpc
+  requires_compatibilities:
+    - FARGATE
+  cpu: 1024
+  memory: 2048
+  services:
+    django:
+      cpu: 512
+      memory: 1024
+      essential: true
+    fastapi:
+      cpu: 512
+      memory: 1024
+      essential: true
+
+run_params:
+  network_configuration:
+    awsvpc_configuration:
+      subnets:
+        - subnet-0631f56adabe3a6ef
+      security_groups:
+        - sg-05052b6a527fb6759
+      assign_public_ip: ENABLED
