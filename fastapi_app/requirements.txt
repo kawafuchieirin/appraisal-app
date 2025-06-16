@@ -13,5 +13,8 @@ pandas>=1.5.0
 httpx>=0.25.0
 python-multipart>=0.0.6
 
+# Lambda adapter
+mangum>=0.17.0
+
 # Development and debugging
 python-json-logger>=2.0.0

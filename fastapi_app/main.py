@@ -10,6 +10,7 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
+from mangum import Mangum
 
 from predict_schema import PredictRequest, PredictResponse, ErrorResponse
 from model_loader import ModelLoader
@@ -237,6 +238,9 @@ async def global_exception_handler(request, exc):
         }
     )
 
+
+# Lambda handler for AWS Lambda deployment
+handler = Mangum(app)
 
 if __name__ == "__main__":
     # 開発サーバー起動

@@ -1,6 +1,6 @@
 # 🏗 Real Estate Appraisal App
 
-不動産査定アプリケーション - Django (UI) + FastAPI (ML API) による多コンテナ構成
+不動産査定アプリケーション - Django (UI) + FastAPI (ML API) による単一コンテナ構成
 
 ## 🎯 概要
 
@@ -10,40 +10,50 @@
 - **Django**: フロントエンドUI（フォーム入力、査定結果表示）
 - **FastAPI**: 査定API（MLモデルによる推論処理）
 - **機械学習**: 重回帰分析モデル
-- **ローカル環境**: docker-compose マルチコンテナ
-- **本番環境**: FastAPI → ECR → Lambda + API Gateway
+- **ローカル環境**: 単一Dockerコンテナ（個別実行）
+- **本番環境**: ECR → Lambda + API Gateway
 
 ## 🗂️ ディレクトリ構成
 
 ```
-app/
-├── main_app/         # Django アプリ本体
-├── ssessment/        # FastAPI による査定API（Lambda対応）
+appraisal-app/
+├── django_app/       # Django アプリ本体
+├── fastapi_app/      # FastAPI による査定API（Lambda対応）
 ├── model_create/     # MLモデル作成・保存
-├── deploy/           
-│   ├── local/        # docker-compose 環境
-│   └── lambda/       # Lambda用 Dockerfile・デプロイスクリプト
+└── deploy/           # デプロイメント・設定ファイル
+    ├── lambda/       # Lambda用デプロイスクリプト
+    ├── .env.development  # 開発環境設定
+    ├── .env.production   # 本番環境設定
+    ├── run_dev.sh    # 開発環境（両サービス起動）
+    ├── run_django.sh # Django単体実行
+    ├── run_fastapi.sh# FastAPI単体実行
+    └── push_to_ecr.sh# ECRデプロイスクリプト
 ```
 
-## 🚀 開発タスク
+## 🛠 開発環境
 
-1. **モデル作成**: 重回帰モデルの学習と保存
-2. **査定API**: FastAPI による `/predict` エンドポイント実装
-3. **Django UI**: ユーザー入力フォーム → API呼び出し → 結果表示
-4. **ローカル環境**: docker-compose による統合環境構築
-5. **Lambda対応**: FastAPI の Lambda 化と ECR デプロイ
-
-## 🛠 開発開始
-
+### 統合開発環境（推奨）
 ```bash
-# ローカル開発環境起動
-docker-compose -f deploy/local/docker-compose.yml up
+# 両サービスを同時起動
+./deploy/run_dev.sh
 
-# モデル学習
+# アクセス
+# Django: http://localhost:8080
+# FastAPI: http://localhost:8000
+```
+
+### 個別サービス実行
+```bash
+# FastAPI のみ
+./deploy/run_fastapi.sh [port] [environment]
+
+# Django のみ
+./deploy/run_django.sh [port] [environment]
+```
+
+### モデル学習
+```bash
 python model_create/train_model.py
-
-# API テスト
-curl -X POST "http://localhost:8000/predict" -H "Content-Type: application/json" -d '{"features": [...]}'
 ```
 
 ## 📋 デプロイ構成

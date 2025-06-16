@@ -1,0 +1,26 @@
+# FastAPI Development Dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install dependencies
+COPY fastapi_app/requirements.txt .
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
+
+# Copy FastAPI application
+COPY fastapi_app/ .
+
+# Copy ML models
+COPY model_create/models/ ./models/
+
+# Expose port
+EXPOSE 8000
+
+# Default command for development
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
