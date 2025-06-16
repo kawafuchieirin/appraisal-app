@@ -43,11 +43,16 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
-SECURE_SSL_REDIRECT = not DEBUG and os.getenv('ENVIRONMENT', 'development') == 'production'
-SESSION_COOKIE_SECURE = not DEBUG and os.getenv('ENVIRONMENT', 'development') == 'production'
-CSRF_COOKIE_SECURE = not DEBUG and os.getenv('ENVIRONMENT', 'development') == 'production'
-CSRF_COOKIE_HTTPONLY = True
+SECURE_SSL_REDIRECT = False  # Disabled for ALB compatibility
+SESSION_COOKIE_SECURE = False  # Disabled for ALB HTTP backend
+CSRF_COOKIE_SECURE = False  # Disabled for ALB HTTP backend
+CSRF_COOKIE_HTTPONLY = False  # Allow frontend access for ALB
 SESSION_COOKIE_HTTPONLY = True
+CSRF_TRUSTED_ORIGINS = [
+    'http://' + host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+] + [
+    'https://' + host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+]
 
 
 # Application definition
@@ -148,5 +153,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # 🏠 Real Estate Valuation API Settings
 # 査定API制御設定
 USE_MODEL_API = os.getenv("USE_MODEL_API", "true").lower() == "true"
-FASTAPI_URL = os.getenv("FASTAPI_URL", "http://localhost:8000")
-FASTAPI_TIMEOUT = int(os.getenv("FASTAPI_TIMEOUT", "10"))
+FASTAPI_URL = os.getenv("API_ENDPOINT", os.getenv("FASTAPI_URL", "http://localhost:8000"))
+FASTAPI_TIMEOUT = int(os.getenv("API_TIMEOUT", os.getenv("FASTAPI_TIMEOUT", "10")))

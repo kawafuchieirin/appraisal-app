@@ -24,7 +24,11 @@
         {"name": "ENVIRONMENT", "value": "production"},
         {"name": "DEBUG", "value": "False"},
         {"name": "PYTHONUNBUFFERED", "value": "1"},
-        {"name": "USE_MODEL_API", "value": "false"}
+        {"name": "USE_MODEL_API", "value": "true"},
+        {"name": "SECRET_KEY", "value": "django-production-secret-key-change-in-real-production-12345"},
+        {"name": "ALLOWED_HOSTS", "value": "*"},
+        {"name": "API_ENDPOINT", "value": "http://satei-app-v2-alb-908422286.ap-northeast-1.elb.amazonaws.com"},
+        {"name": "API_TIMEOUT", "value": "30"}
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
