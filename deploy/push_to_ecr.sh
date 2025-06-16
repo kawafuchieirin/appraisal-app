@@ -59,8 +59,8 @@ build_and_push_service() {
     fi
     
     # Build Docker image
-    echo -e "${YELLOW}🔨 Building ${service} Docker image...${NC}"
-    docker build -f ${service}_app/Dockerfile -t ${repo_name}:latest .
+    echo -e "${YELLOW}🔨 Building ${service} Docker image for linux/amd64...${NC}"
+    docker build --platform linux/amd64 -f ${service}_app/Dockerfile -t ${repo_name}:latest .
     
     if [ $? -ne 0 ]; then
         echo -e "${RED}❌ Docker build failed for ${service}${NC}"
