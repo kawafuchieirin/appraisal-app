@@ -1,0 +1,37 @@
+{
+  "family": "satei-fastapi-ecs",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::412420079063:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::412420079063:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "fastapi",
+      "image": "412420079063.dkr.ecr.ap-northeast-1.amazonaws.com/satei-fastapi:latest",
+      "cpu": 512,
+      "memory": 1024,
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {"name": "ENVIRONMENT", "value": "production"},
+        {"name": "PYTHONUNBUFFERED", "value": "1"},
+        {"name": "CORS_ORIGINS", "value": "*"}
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/satei-app",
+          "awslogs-region": "ap-northeast-1",
+          "awslogs-stream-prefix": "fastapi-ecs"
+        }
+      }
+    }
+  ]
+}

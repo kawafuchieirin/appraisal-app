@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-06-15 18:38:31",
+  "timestamp": "2025-06-16 22:59:46",
   "total_tests": 5,
   "passed_tests": 5,
   "failed_tests": 0,
@@ -7,7 +7,7 @@
     {
       "test": "health_check",
       "status": "pass",
-      "response_time": 0.001596,
+      "response_time": 0.002429,
       "data": {
         "status": "healthy",
         "model_loaded": true,
@@ -34,7 +34,7 @@
       "test": "predict_case_1",
       "name": "標準的な世田谷区物件",
       "status": "pass",
-      "response_time": 0.036141157150268555,
+      "response_time": 0.009036064147949219,
       "input": {
         "land_area": 120.0,
         "building_area": 80.0,
@@ -44,15 +44,14 @@
         "quarter": 1
       },
       "output": {
-        "predicted_price": 5415.2,
-        "confidence": 0.867,
+        "predicted_price": 5415.0,
+        "confidence": 86.7,
         "features_used": {
           "building_area": 80.0,
           "land_area": 120.0,
           "building_age": 10.0,
           "year": 2024.0,
-          "quarter": 1.0,
-          "area_ratio": 0.6666666611111112
+          "quarter": 1.0
         }
       }
     },
@@ -60,7 +59,7 @@
       "test": "predict_case_2",
       "name": "高級エリア港区物件",
       "status": "pass",
-      "response_time": 0.0020601749420166016,
+      "response_time": 0.0038068294525146484,
       "input": {
         "land_area": 100.0,
         "building_area": 90.0,
@@ -70,15 +69,14 @@
         "quarter": 1
       },
       "output": {
-        "predicted_price": 6278.1,
-        "confidence": 0.867,
+        "predicted_price": 6278.0,
+        "confidence": 86.7,
         "features_used": {
           "building_area": 90.0,
           "land_area": 100.0,
           "building_age": 5.0,
           "year": 2024.0,
-          "quarter": 1.0,
-          "area_ratio": 0.8999999910000002
+          "quarter": 1.0
         }
       }
     },
@@ -86,7 +84,7 @@
       "test": "predict_case_3",
       "name": "築年数古い物件",
       "status": "pass",
-      "response_time": 0.0016071796417236328,
+      "response_time": 0.004737138748168945,
       "input": {
         "land_area": 150.0,
         "building_area": 70.0,
@@ -96,15 +94,14 @@
         "quarter": 1
       },
       "output": {
-        "predicted_price": 3721.6,
-        "confidence": 0.867,
+        "predicted_price": 3722.0,
+        "confidence": 86.7,
         "features_used": {
           "building_area": 70.0,
           "land_area": 150.0,
           "building_age": 30.0,
           "year": 2024.0,
-          "quarter": 1.0,
-          "area_ratio": 0.4666666635555556
+          "quarter": 1.0
         }
       }
     },
@@ -112,7 +109,7 @@
       "test": "predict_case_4",
       "name": "小規模物件",
       "status": "pass",
-      "response_time": 0.0014569759368896484,
+      "response_time": 0.0026390552520751953,
       "input": {
         "land_area": 60.0,
         "building_area": 45.0,
@@ -122,15 +119,14 @@
         "quarter": 1
       },
       "output": {
-        "predicted_price": 4248.4,
-        "confidence": 0.867,
+        "predicted_price": 4248.0,
+        "confidence": 86.7,
         "features_used": {
           "building_area": 45.0,
           "land_area": 60.0,
           "building_age": 2.0,
           "year": 2024.0,
-          "quarter": 1.0,
-          "area_ratio": 0.7499999875000002
+          "quarter": 1.0
         }
       }
     }
