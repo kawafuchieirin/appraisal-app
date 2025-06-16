@@ -1,5 +1,5 @@
 import requests
-from django.shortcuts import render, redirect
+from django.shortcuts import render
 from django.contrib import messages
 from django.conf import settings
 from .forms import EstimateForm

@@ -25,12 +25,29 @@ load_dotenv(BASE_DIR / '.env')
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-#*rr6v3t@=kk-oc$f5w3hbl+eoo-j)az)p@+*dhvrioj%v))po'
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    # Only for development - in production, this should fail
+    if os.getenv('ENVIRONMENT', 'development') == 'development':
+        SECRET_KEY = 'django-insecure-dev-only-secret-key-change-in-production'
+    else:
+        raise ValueError("SECRET_KEY environment variable is not set")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = []
+# Set allowed hosts from environment variable
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+# Security settings
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_SSL_REDIRECT = not DEBUG and os.getenv('ENVIRONMENT', 'development') == 'production'
+SESSION_COOKIE_SECURE = not DEBUG and os.getenv('ENVIRONMENT', 'development') == 'production'
+CSRF_COOKIE_SECURE = not DEBUG and os.getenv('ENVIRONMENT', 'development') == 'production'
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_HTTPONLY = True
 
 
 # Application definition
