@@ -2,6 +2,7 @@
 不動産価格予測 FastAPI アプリケーション
 """
 
+import os
 import logging
 from contextlib import asynccontextmanager
 from typing import Dict, Any
@@ -59,13 +60,16 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS設定
+# CORS設定 - 環境変数から読み込み
+# 開発環境ではlocalhostを許可、本番環境では特定のドメインのみ許可
+allowed_origins = os.getenv('CORS_ORIGINS', 'http://localhost:8080,http://127.0.0.1:8080').split(',')
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 本番環境では適切に制限
+    allow_origins=allowed_origins,  # 環境変数で制御
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],  # 必要なメソッドのみ許可
+    allow_headers=["Content-Type", "Authorization"],  # 必要なヘッダーのみ
 )
 
 
