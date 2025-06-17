@@ -4,14 +4,14 @@
 
 ## 🎯 概要
 
-重回帰分析モデルを使用した不動産査定システム。ローカル開発とAWS本番環境に対応。
+Ridge回帰モデルを使用した東京23区の不動産価格査定システム。ローカル開発環境で動作し、AWS環境へのデプロイも可能。
 
 ### 技術構成
 - **Django**: フロントエンドUI（フォーム入力、査定結果表示）
 - **FastAPI**: 査定API（MLモデルによる推論処理）
-- **機械学習**: 重回帰分析モデル
+- **機械学習**: Ridge回帰モデル（StandardScaler + 9次元特徴量）
 - **ローカル環境**: 独立Dockerコンテナ（個別実行）
-- **本番環境**: ECR → ECS Fargate + ALB (CloudFormation管理)
+- **本番環境**: AWS ECS Fargate + ALB (CloudFormation管理)
 
 ## 🗂️ ディレクトリ構成
 
@@ -75,12 +75,12 @@ python create_sample_data.py
 
 ## 📋 アーキテクチャ詳細
 
-### ローカル
+### ローカル環境
 ```
 Django (8080) ──HTTP──→ FastAPI (8000)
 ```
 
-### 本番 (AWS) - 削除済み
+### 本番環境 (AWS)
 ```
 ALB ──→ Django (ECS) ──HTTP──→ FastAPI (ECS)
      └─→ FastAPI (ECS)
@@ -137,7 +137,7 @@ curl http://localhost:8080
 docker logs <container_id>
 ```
 
-### AWS環境（過去運用時）
+### AWS環境
 ```bash
 # ECSサービス状況
 aws ecs describe-services --cluster satei-app-v2-cluster \
@@ -149,4 +149,52 @@ aws elbv2 describe-target-health --target-group-arn <target-group-arn>
 # CloudWatchログ
 aws logs filter-log-events --log-group-name /ecs/satei-app \
   --start-time $(date -d '10 minutes ago' +%s)000
+```
+
+## 🏗️ 査定処理フロー
+
+### 1. 入力項目
+- **建物面積**: 10-1000㎡
+- **土地面積**: 10-2000㎡
+- **築年数**: 0-50年
+- **区名**: 東京23区から選択
+- **査定年**: 2024年（固定）
+- **査定時期**: 四半期（1-4）
+
+### 2. 処理フロー
+```
+ユーザー入力 → Django検証 → FastAPI推論 → 結果表示
+```
+
+### 3. 機械学習モデル
+- **アルゴリズム**: Ridge回帰
+- **特徴量**: 9次元（面積、築年数、地域、時期など）
+- **出力**: 予測価格（万円）+ 信頼度（%）
+
+## 📊 使用例
+
+### APIリクエスト例
+```json
+{
+  "building_area": 80.0,
+  "land_area": 120.0,
+  "building_age": 5,
+  "ward_name": "世田谷区",
+  "year": 2024,
+  "quarter": 2
+}
+```
+
+### レスポンス例
+```json
+{
+  "predicted_price": 5642.0,
+  "confidence": 86.7,
+  "features_used": {
+    "building_area": 80.0,
+    "land_area": 120.0,
+    "building_age": 5.0,
+    "ward_世田谷区": 1.0
+  }
+}
 ```

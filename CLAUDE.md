@@ -4,23 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Real estate appraisal application using Django (UI) + FastAPI (ML API) with single container architecture. Uses multiple regression analysis for property valuation.
+Real estate appraisal application using Django (UI) + FastAPI (ML API) with microservices architecture. Uses Ridge regression model for property valuation in Tokyo's 23 wards.
 
 ## Architecture
 
 ### Service Architecture
-- **Django (Port 8000)**: Frontend UI service - forms, results display, error handling
+- **Django (Port 8080)**: Frontend UI service - forms, results display, error handling
 - **FastAPI (Port 8000)**: ML prediction API - regression model inference
-- **Communication**: Django makes HTTP requests to FastAPI endpoint via ALB
-- **Local**: Independent Docker containers (no docker-compose)
-- **Production**: ECR → ECS Fargate + ALB (CloudFormation managed)
+- **Communication**: Django makes HTTP requests to FastAPI endpoint
+- **Local**: Independent Docker containers
+- **Production**: AWS ECS Fargate + ALB (CloudFormation managed)
 
 ### Key Architectural Patterns
-- **Model Serving**: Models packaged in FastAPI container, loaded at startup
+- **Model Serving**: Ridge regression model packaged in FastAPI container
 - **Error Handling**: Graceful degradation when API unavailable
 - **Environment Config**: Feature toggles via USE_MODEL_API env var
-- **Production Networking**: ALB routes traffic between Django and FastAPI services
-- **Infrastructure as Code**: All AWS resources managed via CloudFormation
+- **API Communication**: Django sends property data to FastAPI for prediction
+- **Infrastructure as Code**: CloudFormation templates for AWS deployment
 
 ## Commands
 
@@ -52,7 +52,7 @@ python fastapi_app/test_api.py
 # Manual API test
 curl -X POST "http://localhost:8000/predict" \
   -H "Content-Type: application/json" \
-  -d '{"features": [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]}'
+  -d '{"building_area": 80, "land_area": 120, "building_age": 5, "ward_name": "世田谷区", "year": 2024, "quarter": 2}'
 ```
 
 ### Deployment
@@ -89,10 +89,12 @@ python3 deploy/cleanup_individual_resources.py
 - `predict_schema.py`: Request/response validation schemas
 - `Dockerfile.ecs`: ECS Fargate deployment configuration
 
-### Model Training
-- `train_model.py`: Creates model.joblib, scaler.joblib, feature_info.joblib
-- `create_sample_data.py`: Test data generation
-- Models stored in `models/` directory
+### Model Training & Processing
+- `train_model.py`: Creates Ridge regression model with StandardScaler
+- `create_sample_data.py`: Test data generation for Tokyo 23 wards
+- Models stored in `models/` directory (model.joblib, scaler.joblib, feature_info.joblib)
+- Features: building_area, land_area, building_age, ward_name, year, quarter
+- Engineered features: area_ratio, total_area, ward/district encoding
 
 ## Environment Configuration
 
