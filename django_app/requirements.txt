@@ -2,9 +2,6 @@
 django>=4.2.0
 gunicorn>=21.2.0
 
-# Environment and configuration
-python-dotenv>=1.0.0
-
 # HTTP requests
 requests>=2.31.0
 

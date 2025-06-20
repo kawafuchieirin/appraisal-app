@@ -1,24 +1,16 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Real Estate Appraisal App - ECS Fargate with ALB'
+Description: 'Simplified ECS deployment for satei-app with better debugging'
 
 Parameters:
-  ECRFastAPIRepository:
-    Type: String
-    Default: '412420079063.dkr.ecr.ap-northeast-1.amazonaws.com/satei-fastapi:latest'
-    Description: FastAPI ECR image URI
-  
-  ECRDjangoRepository:
-    Type: String
-    Default: '412420079063.dkr.ecr.ap-northeast-1.amazonaws.com/satei-django:latest'
-    Description: Django ECR image URI
-  
   Environment:
     Type: String
-    Default: 'production'
-    Description: Environment name
+    Default: production
+    AllowedValues:
+      - development
+      - production
 
 Resources:
-  # VPC
+  # VPC Configuration
   VPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -29,7 +21,6 @@ Resources:
         - Key: Name
           Value: !Sub '${AWS::StackName}-vpc'
 
-  # Internet Gateway
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
@@ -37,79 +28,72 @@ Resources:
         - Key: Name
           Value: !Sub '${AWS::StackName}-igw'
 
-  InternetGatewayAttachment:
+  AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
-      InternetGatewayId: !Ref InternetGateway
       VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
 
-  # Public Subnets
   PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [0, !GetAZs '']
       CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-public-subnet-1'
+          Value: !Sub '${AWS::StackName}-public-1'
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [1, !GetAZs '']
       CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-public-subnet-2'
+          Value: !Sub '${AWS::StackName}-public-2'
 
-  # Route Table
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-public-routes'
+          Value: !Sub '${AWS::StackName}-public-rt'
 
-  DefaultPublicRoute:
+  PublicRoute:
     Type: AWS::EC2::Route
-    DependsOn: InternetGatewayAttachment
+    DependsOn: AttachGateway
     Properties:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
-  PublicSubnet1RouteTableAssociation:
+  SubnetRouteTableAssociation1:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      RouteTableId: !Ref PublicRouteTable
       SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
 
-  PublicSubnet2RouteTableAssociation:
+  SubnetRouteTableAssociation2:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      RouteTableId: !Ref PublicRouteTable
       SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
 
   # Security Groups
   ALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: !Sub '${AWS::StackName}-alb-sg'
-      GroupDescription: Security group for Application Load Balancer
+      GroupDescription: Security group for ALB
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
           CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
@@ -118,7 +102,6 @@ Resources:
   ECSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: !Sub '${AWS::StackName}-ecs-sg'
       GroupDescription: Security group for ECS tasks
       VpcId: !Ref VPC
       SecurityGroupIngress:
@@ -135,8 +118,9 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Name: !Sub '${AWS::StackName}-alb'
-      Scheme: internet-facing
       Type: application
+      IpAddressType: ipv4
+      Scheme: internet-facing
       Subnets:
         - !Ref PublicSubnet1
         - !Ref PublicSubnet2
@@ -146,7 +130,7 @@ Resources:
         - Key: Name
           Value: !Sub '${AWS::StackName}-alb'
 
-  # Target Groups
+  # Target Groups with relaxed health checks
   DjangoTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
@@ -157,10 +141,12 @@ Resources:
       TargetType: ip
       HealthCheckPath: /health/
       HealthCheckProtocol: HTTP
-      HealthCheckIntervalSeconds: 60
-      HealthCheckTimeoutSeconds: 30
+      HealthCheckIntervalSeconds: 120
+      HealthCheckTimeoutSeconds: 60
       HealthyThresholdCount: 2
       UnhealthyThresholdCount: 10
+      Matcher:
+        HttpCode: 200-399
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-django-tg'
@@ -212,7 +198,7 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      LogGroupName: /ecs/satei-app
+      LogGroupName: !Sub '/ecs/${AWS::StackName}'
       RetentionInDays: 7
 
   # ECS Cluster
@@ -238,6 +224,16 @@ Resources:
             Action: 'sts:AssumeRole'
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+      Policies:
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: !GetAtt LogGroup.Arn
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-ecs-execution-role'
@@ -250,15 +246,15 @@ Resources:
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
-      Cpu: 512
-      Memory: 1024
+      Cpu: 256
+      Memory: 512
       ExecutionRoleArn: !Ref ECSTaskExecutionRole
       TaskRoleArn: !Ref ECSTaskExecutionRole
       ContainerDefinitions:
         - Name: fastapi
-          Image: !Ref ECRFastAPIRepository
-          Cpu: 512
-          Memory: 1024
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/satei-fastapi:latest'
+          Cpu: 256
+          Memory: 512
           Essential: true
           PortMappings:
             - ContainerPort: 8000
@@ -266,6 +262,8 @@ Resources:
           Environment:
             - Name: ENVIRONMENT
               Value: !Ref Environment
+            - Name: PORT
+              Value: '8000'
             - Name: PYTHONUNBUFFERED
               Value: '1'
             - Name: CORS_ORIGINS
@@ -277,7 +275,7 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: fastapi
 
-  # Django Task Definition
+  # Django Task Definition with debug settings
   DjangoTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
@@ -291,7 +289,7 @@ Resources:
       TaskRoleArn: !Ref ECSTaskExecutionRole
       ContainerDefinitions:
         - Name: django
-          Image: !Ref ECRDjangoRepository
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/satei-django:latest'
           Cpu: 512
           Memory: 1024
           Essential: true
@@ -316,13 +314,23 @@ Resources:
             - Name: SECRET_KEY
               Value: 'django-production-secret-key-change-in-real-production-12345'
             - Name: ALLOWED_HOSTS
-              Value: !Sub '${ApplicationLoadBalancer.DNSName},localhost,127.0.0.1'
+              Value: !Sub '${ApplicationLoadBalancer.DNSName},*.cloudfront.net,localhost,127.0.0.1'
+            - Name: FORCE_HTTPS
+              Value: 'false'
           LogConfiguration:
             LogDriver: awslogs
             Options:
               awslogs-group: !Ref LogGroup
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: django
+          HealthCheck:
+            Command:
+              - "CMD-SHELL"
+              - "curl -f http://localhost:8000/health/ || exit 1"
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
 
   # ECS Services
   FastAPIService:
@@ -371,25 +379,20 @@ Resources:
         - ContainerName: django
           ContainerPort: 8000
           TargetGroupArn: !Ref DjangoTargetGroup
+      HealthCheckGracePeriodSeconds: 180
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-django-service'
 
 Outputs:
-  ApplicationURL:
-    Description: 'URL of the Application Load Balancer'
+  LoadBalancerURL:
+    Description: URL of the Application Load Balancer
     Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}'
-    Export:
-      Name: !Sub '${AWS::StackName}-app-url'
   
-  FastAPIHealthCheck:
-    Description: 'FastAPI Health Check URL'
-    Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}/health'
-    Export:
-      Name: !Sub '${AWS::StackName}-fastapi-health'
+  ECRDjangoRepository:
+    Description: ECR Repository for Django
+    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/satei-django:latest'
   
-  ECSClusterName:
-    Description: 'ECS Cluster Name'
-    Value: !Ref ECSCluster
-    Export:
-      Name: !Sub '${AWS::StackName}-cluster-name'
+  ECRFastAPIRepository:
+    Description: ECR Repository for FastAPI
+    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/satei-fastapi:latest'

@@ -1,0 +1,485 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Real Estate Appraisal App - ECS Fargate with HTTPS ALB'
+
+Parameters:
+  CertificateArn:
+    Type: String
+    Description: ACM Certificate ARN for HTTPS
+    Default: ""
+  DomainName:
+    Type: String
+    Description: Domain name for the application (optional)
+    Default: ""
+
+Conditions:
+  HasCertificate: !Not [!Equals [!Ref CertificateArn, ""]]
+  HasDomainName: !Not [!Equals [!Ref DomainName, ""]]
+
+Resources:
+  # VPC and Network Configuration
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: satei-app-vpc
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: satei-app-public-subnet-1
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: satei-app-public-subnet-2
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: satei-app-igw
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: satei-app-public-route-table
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  # Security Groups
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ALB
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: satei-app-alb-sg
+
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ECS tasks
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: satei-app-ecs-sg
+
+  # ECS Cluster
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: satei-app-cluster
+      CapacityProviders:
+        - FARGATE
+        - FARGATE_SPOT
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Weight: 1
+        - CapacityProvider: FARGATE_SPOT
+          Weight: 0
+
+  # ECS Task Execution Role
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  # CloudWatch Log Groups
+  DjangoLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/satei-app-django
+      RetentionInDays: 7
+
+  FastAPILogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/satei-app-fastapi
+      RetentionInDays: 7
+
+  # Application Load Balancer
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: satei-app-alb
+      Type: application
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      Tags:
+        - Key: Name
+          Value: satei-app-alb
+
+  # Target Groups
+  DjangoTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: satei-app-django-tg
+      Port: 8080
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      Matcher:
+        HttpCode: '200,302'
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '30'
+
+  FastAPITargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: satei-app-fastapi-tg
+      Port: 8000
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckPath: /health
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      Matcher:
+        HttpCode: '200'
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '30'
+
+  # HTTP Listener (redirects to HTTPS if certificate exists)
+  HTTPListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - !If
+          - HasCertificate
+          - Type: redirect
+            RedirectConfig:
+              Protocol: HTTPS
+              Port: '443'
+              StatusCode: HTTP_301
+          - Type: forward
+            TargetGroupArn: !Ref DjangoTargetGroup
+
+  # HTTPS Listener (only created if certificate exists)
+  HTTPSListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: HasCertificate
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref CertificateArn
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref DjangoTargetGroup
+
+  # Listener Rules for path-based routing (HTTP)
+  HTTPListenerRuleAPI:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref HTTPListener
+      Priority: 1
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /predict*
+            - /health
+            - /docs*
+            - /openapi.json
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref FastAPITargetGroup
+
+  # Listener Rules for path-based routing (HTTPS)
+  HTTPSListenerRuleAPI:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Condition: HasCertificate
+    Properties:
+      ListenerArn: !Ref HTTPSListener
+      Priority: 1
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /predict*
+            - /health
+            - /docs*
+            - /openapi.json
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref FastAPITargetGroup
+
+  # ECS Task Definitions
+  DjangoTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: satei-app-django
+      RequiresCompatibilities:
+        - FARGATE
+      NetworkMode: awsvpc
+      Cpu: '256'
+      Memory: '512'
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: django
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/satei-app-django:latest'
+          PortMappings:
+            - ContainerPort: 8080
+              Protocol: tcp
+          Environment:
+            - Name: DEBUG
+              Value: 'False'
+            - Name: SECRET_KEY
+              Value: 'your-secret-key-here-please-change-in-production'
+            - Name: ALLOWED_HOSTS
+              Value: !If
+                - HasDomainName
+                - !Sub '${DomainName},*'
+                - '*'
+            - Name: USE_MODEL_API
+              Value: 'True'
+            - Name: API_ENDPOINT
+              Value: !Sub
+                - 'http://${ALB_DNS}/predict'
+                - ALB_DNS: !GetAtt ApplicationLoadBalancer.DNSName
+            - Name: API_TIMEOUT
+              Value: '10'
+            - Name: SECURE_SSL_REDIRECT
+              Value: 'False'
+            - Name: SESSION_COOKIE_SECURE
+              Value: !If [HasCertificate, 'True', 'False']
+            - Name: CSRF_COOKIE_SECURE
+              Value: !If [HasCertificate, 'True', 'False']
+            - Name: CSRF_COOKIE_HTTPONLY
+              Value: 'False'
+            - Name: CSRF_TRUSTED_ORIGINS
+              Value: !If
+                - HasCertificate
+                - !Sub
+                  - 'https://${Domain},https://${ALB_DNS}'
+                  - Domain: !If [HasDomainName, !Ref DomainName, !GetAtt ApplicationLoadBalancer.DNSName]
+                    ALB_DNS: !GetAtt ApplicationLoadBalancer.DNSName
+                - !Sub 'http://${ApplicationLoadBalancer.DNSName}'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref DjangoLogGroup
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: ecs
+
+  FastAPITaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: satei-app-fastapi
+      RequiresCompatibilities:
+        - FARGATE
+      NetworkMode: awsvpc
+      Cpu: '512'
+      Memory: '1024'
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: fastapi
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/satei-app-fastapi:latest'
+          PortMappings:
+            - ContainerPort: 8000
+              Protocol: tcp
+          Environment:
+            - Name: ENVIRONMENT
+              Value: 'production'
+            - Name: CORS_ORIGINS
+              Value: !If
+                - HasCertificate
+                - !Sub
+                  - 'https://${Domain},https://${ALB_DNS}'
+                  - Domain: !If [HasDomainName, !Ref DomainName, !GetAtt ApplicationLoadBalancer.DNSName]
+                    ALB_DNS: !GetAtt ApplicationLoadBalancer.DNSName
+                - !Sub 'http://${ApplicationLoadBalancer.DNSName}'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref FastAPILogGroup
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: ecs
+
+  # ECS Services
+  DjangoService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - HTTPListener
+    Properties:
+      ServiceName: satei-app-django-service
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref DjangoTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets:
+            - !Ref PublicSubnet1
+            - !Ref PublicSubnet2
+          SecurityGroups:
+            - !Ref ECSSecurityGroup
+          AssignPublicIp: ENABLED
+      LoadBalancers:
+        - ContainerName: django
+          ContainerPort: 8080
+          TargetGroupArn: !Ref DjangoTargetGroup
+      HealthCheckGracePeriodSeconds: 120
+
+  FastAPIService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - HTTPListener
+    Properties:
+      ServiceName: satei-app-fastapi-service
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref FastAPITaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets:
+            - !Ref PublicSubnet1
+            - !Ref PublicSubnet2
+          SecurityGroups:
+            - !Ref ECSSecurityGroup
+          AssignPublicIp: ENABLED
+      LoadBalancers:
+        - ContainerName: fastapi
+          ContainerPort: 8000
+          TargetGroupArn: !Ref FastAPITargetGroup
+      HealthCheckGracePeriodSeconds: 120
+
+Outputs:
+  ApplicationURL:
+    Description: Application URL
+    Value: !If
+      - HasCertificate
+      - !Sub
+        - 'https://${Domain}'
+        - Domain: !If [HasDomainName, !Ref DomainName, !GetAtt ApplicationLoadBalancer.DNSName]
+      - !Sub 'http://${ApplicationLoadBalancer.DNSName}'
+  
+  ALBEndpoint:
+    Description: ALB DNS Name
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+  
+  ValuationURL:
+    Description: Valuation Form URL
+    Value: !If
+      - HasCertificate
+      - !Sub
+        - 'https://${Domain}/valuation/'
+        - Domain: !If [HasDomainName, !Ref DomainName, !GetAtt ApplicationLoadBalancer.DNSName]
+      - !Sub 'http://${ApplicationLoadBalancer.DNSName}/valuation/'
+  
+  APIDocsURL:
+    Description: FastAPI Documentation URL
+    Value: !If
+      - HasCertificate
+      - !Sub
+        - 'https://${Domain}/docs'
+        - Domain: !If [HasDomainName, !Ref DomainName, !GetAtt ApplicationLoadBalancer.DNSName]
+      - !Sub 'http://${ApplicationLoadBalancer.DNSName}/docs'

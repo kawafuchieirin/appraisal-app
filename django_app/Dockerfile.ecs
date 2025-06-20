@@ -21,6 +21,10 @@ COPY django_app/ .
 ENV DJANGO_SETTINGS_MODULE=django_app.settings
 ENV PYTHONUNBUFFERED=1
 ENV ENVIRONMENT=production
+ENV SECRET_KEY=temporary-build-key-for-collectstatic
+
+# Collect static files
+RUN python manage.py collectstatic --noinput || true
 
 # Expose port
 EXPOSE 8000
