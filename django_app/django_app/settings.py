@@ -12,13 +12,9 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
-from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Load environment variables from .env file
-load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -43,16 +39,34 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
-SECURE_SSL_REDIRECT = False  # Disabled for ALB compatibility
-SESSION_COOKIE_SECURE = False  # Disabled for ALB HTTP backend
-CSRF_COOKIE_SECURE = False  # Disabled for ALB HTTP backend
-CSRF_COOKIE_HTTPONLY = False  # Allow frontend access for ALB
+
+# Handle HTTPS when behind CloudFront/ALB
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Cookie settings - adaptive based on protocol
+is_secure = os.getenv('FORCE_HTTPS', 'false').lower() == 'true'
+SECURE_SSL_REDIRECT = False  # Let CloudFront handle redirects
+SESSION_COOKIE_SECURE = is_secure
+CSRF_COOKIE_SECURE = is_secure
+CSRF_COOKIE_HTTPONLY = False  # Allow frontend access
 SESSION_COOKIE_HTTPONLY = True
-CSRF_TRUSTED_ORIGINS = [
-    'http://' + host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
-] + [
-    'https://' + host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
-]
+CSRF_COOKIE_SAMESITE = 'Lax'  # For CSRF protection
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+# CSRF trusted origins - include ALB DNS names
+CSRF_TRUSTED_ORIGINS = []
+allowed_hosts = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+for host in allowed_hosts:
+    host = host.strip()
+    if host and host != '*':
+        CSRF_TRUSTED_ORIGINS.extend([
+            f'http://{host}',
+            f'https://{host}'
+        ])
+
+# Add ELB health check user agent to CSRF exemption
+CSRF_FAILURE_VIEW = 'django.views.csrf.csrf_failure'
 
 
 # Application definition
@@ -69,6 +83,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'middleware.HealthCheckMiddleware',  # Add health check middleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -144,6 +160,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field

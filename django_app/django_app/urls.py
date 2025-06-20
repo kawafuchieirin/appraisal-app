@@ -17,7 +17,14 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import RedirectView
+from django.http import HttpResponseNotFound
 from health import health_check
+
+# Custom 404 handler for security
+def custom_404(request, exception=None):
+    return HttpResponseNotFound("Not Found")
+
+handler404 = custom_404
 
 urlpatterns = [
     path('admin/', admin.site.urls),
